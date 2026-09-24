@@ -27,17 +27,13 @@ export async function searchRemoteOk(params: SearchParams): Promise<RawJob[]> {
   // The API returns a legal notice as the first array element; skip non-job rows.
   const jobs = data.filter((row) => row.position && row.id);
 
-  const terms = [params.query, ...params.keywords]
-    .filter(Boolean)
-    .map((t) => t.toLowerCase());
+  // No pre-filtering here: RemoteOK's whole feed is a few hundred jobs at
+  // most, so it's cheap to hand everything to the central resume/keyword
+  // scorer in matcher.ts rather than risk a strict substring filter zeroing
+  // out results before scoring even runs.
+  void params;
 
-  return jobs
-    .filter((job) => {
-      if (terms.length === 0) return true;
-      const haystack = `${job.position} ${job.description ?? ""} ${(job.tags ?? []).join(" ")}`.toLowerCase();
-      return terms.some((term) => haystack.includes(term));
-    })
-    .map((job) => ({
+  return jobs.map((job) => ({
       source: "remoteok" as const,
       externalId: job.id!,
       title: job.position!,

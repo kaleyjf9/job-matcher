@@ -3,6 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+/** Reads an API error message defensively — the response may not be JSON
+ * (e.g. a framework-level 500 page) if the route handler crashed. */
+async function readErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json();
+    return body.error ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function ProfileForm({
   initialKeywords,
   initialRemoteOnly,
@@ -29,8 +40,7 @@ export function ProfileForm({
         const formData = new FormData();
         formData.append("resume", file);
         const res = await fetch("/api/resume/upload", { method: "POST", body: formData });
-        const body = await res.json();
-        if (!res.ok) throw new Error(body.error ?? "Upload failed");
+        if (!res.ok) throw new Error(await readErrorMessage(res, "Upload failed"));
       }
 
       const keywords = keywordsInput
@@ -43,8 +53,7 @@ export function ProfileForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ keywords, remoteOnly }),
       });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? "Failed to save keywords");
+      if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to save keywords"));
 
       setStatus("saved");
       setFile(null);

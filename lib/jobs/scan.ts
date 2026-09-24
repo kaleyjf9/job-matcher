@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { extractResumeKeywords } from "@/lib/resume/extract-keywords";
 import { searchAdzuna } from "./sources/adzuna";
 import { searchRemoteOk } from "./sources/remoteok";
 import { searchUsaJobs } from "./sources/usajobs";
@@ -12,30 +13,19 @@ type Profile = {
   remote_only: boolean;
 };
 
-/** Builds a short search query from the most distinctive words in the resume. */
-function queryFromResume(resumeText: string): string {
-  const words = resumeText
-    .toLowerCase()
-    .replace(/[^a-z0-9+.#\s]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 4);
-
-  const counts = new Map<string, number>();
-  for (const w of words) counts.set(w, (counts.get(w) ?? 0) + 1);
-
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-    .map(([w]) => w)
-    .join(" ");
-}
-
 async function fetchJobsForProfile(profile: Profile): Promise<ReturnType<typeof scoreAndRankJobs>> {
   const resumeText = profile.resume_text ?? "";
-  const query = queryFromResume(resumeText);
+  const userKeywords = profile.keywords ?? [];
+
+  // Resume skills/experience always drive matching, regardless of whether
+  // the user typed anything into the keywords box.
+  const resumeKeywords = extractResumeKeywords(resumeText, 15);
+
   const params = {
-    query,
-    keywords: profile.keywords ?? [],
+    query: resumeKeywords.slice(0, 8).join(" "),
+    // Sent to job APIs that do their own text search (Adzuna/USAJobs) — a
+    // broader combined set gives those a wider net to search against.
+    keywords: [...new Set([...resumeKeywords, ...userKeywords])],
     remoteOnly: profile.remote_only ?? false,
   };
 
@@ -49,7 +39,7 @@ async function fetchJobsForProfile(profile: Profile): Promise<ReturnType<typeof 
     r.status === "fulfilled" ? r.value : []
   );
 
-  return scoreAndRankJobs(allJobs, resumeText, params.keywords, params.remoteOnly);
+  return scoreAndRankJobs(allJobs, resumeKeywords, userKeywords, params.remoteOnly);
 }
 
 /**
