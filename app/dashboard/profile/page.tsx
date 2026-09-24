@@ -16,16 +16,18 @@ export default async function ProfilePage() {
   return (
     <div className="flex max-w-lg flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Resume & keywords</h1>
-        <p className="text-gray-600">
+        <h1 className="text-2xl font-semibold tracking-tight">Resume &amp; keywords</h1>
+        <p className="mt-1 text-sm text-muted">
           We use these to find and score job postings for you every day.
         </p>
       </div>
-      <ProfileForm
-        initialKeywords={profile?.keywords ?? []}
-        initialRemoteOnly={profile?.remote_only ?? false}
-        hasResume={Boolean(profile?.resume_path)}
-      />
+      <div className="rounded-lg border border-border bg-card p-6">
+        <ProfileForm
+          initialKeywords={profile?.keywords ?? []}
+          initialRemoteOnly={profile?.remote_only ?? false}
+          hasResume={Boolean(profile?.resume_path)}
+        />
+      </div>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { decodeHtmlEntities } from "../decode-html-entities";
 import type { RawJob, SearchParams } from "../types";
 
 type RemoteOkResult = {
@@ -34,14 +35,14 @@ export async function searchRemoteOk(params: SearchParams): Promise<RawJob[]> {
   void params;
 
   return jobs.map((job) => ({
-      source: "remoteok" as const,
-      externalId: job.id!,
-      title: job.position!,
-      company: job.company ?? null,
-      location: job.location ?? "Remote",
-      remote: true,
-      url: job.url ?? `https://remoteok.com/remote-jobs/${job.slug ?? job.id}`,
-      description: job.description ?? "",
-      postedAt: job.date ?? null,
-    }));
+    source: "remoteok" as const,
+    externalId: job.id!,
+    title: decodeHtmlEntities(job.position!),
+    company: job.company ? decodeHtmlEntities(job.company) : null,
+    location: job.location ? decodeHtmlEntities(job.location).replace(/,\s*$/, "") : "Remote",
+    remote: true,
+    url: job.url ?? `https://remoteok.com/remote-jobs/${job.slug ?? job.id}`,
+    description: job.description ? decodeHtmlEntities(job.description) : "",
+    postedAt: job.date ?? null,
+  }));
 }
