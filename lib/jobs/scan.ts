@@ -63,6 +63,17 @@ export async function runDailyScan() {
   for (const profile of profiles ?? []) {
     const scored = await fetchJobsForProfile(profile);
     usersScanned += 1;
+
+    // Replace this user's list each run rather than accumulating forever —
+    // a posting that no longer clears the score threshold (or that scored
+    // well under stale matching logic from a previous deploy) shouldn't
+    // linger on the dashboard indefinitely.
+    const { error: deleteError } = await admin
+      .from("job_matches")
+      .delete()
+      .eq("user_id", profile.id);
+    if (deleteError) throw deleteError;
+
     if (scored.length === 0) continue;
 
     const rows = scored.map((job) => ({
@@ -80,11 +91,11 @@ export async function runDailyScan() {
       posted_at: job.postedAt,
     }));
 
-    const { error: upsertError, count } = await admin
+    const { error: insertError, count } = await admin
       .from("job_matches")
-      .upsert(rows, { onConflict: "user_id,source,external_id", count: "exact" });
+      .insert(rows, { count: "exact" });
 
-    if (upsertError) throw upsertError;
+    if (insertError) throw insertError;
     jobsInserted += count ?? 0;
   }
 

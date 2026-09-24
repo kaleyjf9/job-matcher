@@ -20,12 +20,15 @@ type AdzunaResult = {
 export async function searchAdzuna(params: SearchParams): Promise<RawJob[]> {
   if (!APP_ID || !APP_KEY) return [];
 
-  const what = [params.query, ...params.keywords].filter(Boolean).join(" ");
+  const terms = [params.query, ...params.keywords].filter(Boolean).join(" ");
   const url = new URL("https://api.adzuna.com/v1/api/jobs/us/search/1");
   url.searchParams.set("app_id", APP_ID);
   url.searchParams.set("app_key", APP_KEY);
   url.searchParams.set("results_per_page", "30");
-  url.searchParams.set("what", what);
+  // `what_or` matches any of the given words (OR), unlike `what`, which
+  // requires all of them (AND) — with a dozen multi-word resume skill
+  // phrases combined, an AND match would reliably return zero results.
+  url.searchParams.set("what_or", terms);
   url.searchParams.set("content-type", "application/json");
   if (params.remoteOnly) {
     url.searchParams.set("where", "remote");
