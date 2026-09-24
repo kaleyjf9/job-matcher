@@ -18,7 +18,13 @@ type AdzunaResult = {
  * defense contractors. Free tier: https://developer.adzuna.com
  */
 export async function searchAdzuna(params: SearchParams): Promise<RawJob[]> {
-  if (!APP_ID || !APP_KEY) return [];
+  if (!APP_ID || !APP_KEY) {
+    console.error("[adzuna] missing credentials", {
+      hasAppId: Boolean(APP_ID),
+      hasAppKey: Boolean(APP_KEY),
+    });
+    return [];
+  }
 
   const terms = [params.query, ...params.keywords].filter(Boolean).join(" ");
   const url = new URL("https://api.adzuna.com/v1/api/jobs/us/search/1");
@@ -35,9 +41,13 @@ export async function searchAdzuna(params: SearchParams): Promise<RawJob[]> {
   }
 
   const res = await fetch(url.toString(), { next: { revalidate: 0 } });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.error("[adzuna] request failed", res.status, await res.text());
+    return [];
+  }
 
   const data = (await res.json()) as { results?: AdzunaResult[] };
+  console.error("[adzuna] result count", data.results?.length ?? 0);
 
   return (data.results ?? []).map((job) => ({
     source: "adzuna" as const,
